@@ -547,7 +547,15 @@ function hideLoader() {
 
 function applyOrgName() {
   const orgName = CFG.orgName || 'Voting Portal';
-  
+  // TEMPORARY: Add test admin if none exist
+if (DATA.admins.length === 0) {
+  console.log('No admins found, adding test admin');
+  DATA.admins.push({
+    pin: '1234',
+    role: 'superadmin',
+    name: 'Test Admin'
+  });
+}
   const loginOrgEl = document.getElementById('login-org-name');
   if (loginOrgEl) loginOrgEl.textContent = orgName;
   
