@@ -870,9 +870,33 @@ function initVoter(){
 
   DATA.categories.forEach(cat=>{
     let noms=[];
-    if(cat.scope==='dept')   noms=DATA.nominees.filter(n=>n.category===cat.id&&n.dept===v.dept);
-    else if(cat.scope==='unit') noms=DATA.nominees.filter(n=>n.category===cat.id&&n.unit===v.unit);
-    else noms=DATA.nominees.filter(n=>n.category===cat.id);
+    if(cat.scope === 'dept') {
+
+  noms = DATA.nominees.filter(
+    n => n.category === cat.id &&
+         n.dept === v.dept
+  );
+
+}
+else if(cat.scope === 'unit') {
+
+  noms = DATA.nominees.filter(
+    n => n.category === cat.id &&
+         n.unit === v.unit
+  );
+
+}
+else {
+
+  // Global category
+  // Only show nominees without dept/unit restrictions
+
+  noms = DATA.nominees.filter(
+    n => n.category === cat.id &&
+         (!n.dept || n.dept === '') &&
+         (!n.unit || n.unit === '')
+  );
+}
     if(!noms.length) return;
     idx++;
     const sec=document.createElement('div');
