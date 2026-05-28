@@ -579,36 +579,102 @@ let currentUser=null, selections={};
 // ═══════════════════════════════════════════════════════════
 // GOOGLE SHEETS — READ (API key)
 // ═══════════════════════════════════════════════════════════
+// Fetch a single sheet range safely — returns [] if tab missing or empty
+async function fetchRange(range) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CFG.sheetId}/values/${encodeURIComponent(range)}?key=${CFG.apiKey}`;
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!res.ok) {
+      console.warn(`[Sheets] Could not fetch "${range}": ${json.error?.message||res.status}`);
+      return [];
+    }
+    return json.values || [];
+  } catch(e) {
+    console.warn(`[Sheets] Network error fetching "${range}":`, e.message);
+    return [];
+  }
+}
+
 async function fetchFromSheets() {
   if (!CFG.sheetId || !CFG.apiKey) return false;
-  const ranges = ['Voters!A2:E','Nominees!A2:F','Votes!A2:D','Admins!A2:C','Categories!A2:C','Departments!A2:D','Config!A1:B20'];
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CFG.sheetId}/values:batchGet?ranges=${ranges.map(encodeURIComponent).join('&ranges=')}&key=${CFG.apiKey}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error?.message || `HTTP ${res.status}`);
-  const [vD,nD,vtD,adD,catD,deptD,cfgD] = json.valueRanges;
 
-  if (vD.values)   DATA.voters     = vD.values.map(r=>({pin:r[0]||'',name:r[1]||'',dept:r[2]||'',unit:r[3]||'',hasVoted:r[4]==='TRUE'}));
-  if (nD.values)   DATA.nominees   = nD.values.map(r=>({id:r[0]||'',name:r[1]||'',dept:r[2]||'',unit:r[3]||'',category:r[4]||'',scope:r[5]||'global'}));
-  if (vtD.values)  DATA.votes      = vtD.values.map(r=>({pin:r[0]||'',nomineeId:r[1]||'',category:r[2]||'',timestamp:r[3]||''}));
-  if (adD.values)  DATA.admins     = adD.values.map(r=>({pin:r[0]||'',role:r[1]||'',name:r[2]||''}));
-  if (catD.values) DATA.categories = catD.values.map(r=>({id:r[0]||'',name:r[1]||'',scope:r[2]||'global'}));
+  // Test connection first with a lightweight metadata call
+  const testUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CFG.sheetId}?fields=spreadsheetId&key=${CFG.apiKey}`;
+  const testRes = await fetch(testUrl);
+  if (!testRes.ok) {
+    const j = await testRes.json();
+    throw new Error(j.error?.message || `HTTP ${testRes.status}`);
+  }
 
-  // Read Config sheet — rows of [key, value]
-  if (cfgD && cfgD.values) {
-    cfgD.values.forEach(r=>{
+  // Fetch all tabs in one batch — tabs that don't exist are skipped gracefully
+  const tabRanges = [
+    'Voters!A2:E',
+    'Nominees!A2:F',
+    'Votes!A2:D',
+    'Admins!A2:C',
+    'Categories!A2:C',
+    'Departments!A2:D',
+    'Config!A1:B20'
+  ];
+
+  // Use batchGet but handle partial failures by fetching individually if batch fails
+  let rows = {};
+  try {
+    const batchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CFG.sheetId}/values:batchGet?ranges=${tabRanges.map(encodeURIComponent).join('&ranges=')}&key=${CFG.apiKey}`;
+    const batchRes = await fetch(batchUrl);
+    const batchJson = await batchRes.json();
+    if (batchRes.ok) {
+      batchJson.valueRanges.forEach((vr, i) => {
+        rows[tabRanges[i].split('!')[0]] = vr.values || [];
+      });
+    } else {
+      // Batch failed (likely a missing tab name) — fall back to individual fetches
+      console.warn('[Sheets] Batch fetch failed, falling back to individual fetches:', batchJson.error?.message);
+      for (const range of tabRanges) {
+        const tab = range.split('!')[0];
+        rows[tab] = await fetchRange(range);
+      }
+    }
+  } catch(e) {
+    // Network failure — try individual
+    console.warn('[Sheets] Batch fetch error, trying individually:', e.message);
+    for (const range of tabRanges) {
+      const tab = range.split('!')[0];
+      rows[tab] = await fetchRange(range);
+    }
+  }
+
+  // Parse each tab
+  const vD   = rows['Voters']      || [];
+  const nD   = rows['Nominees']    || [];
+  const vtD  = rows['Votes']       || [];
+  const adD  = rows['Admins']      || [];
+  const catD = rows['Categories']  || [];
+  const deptD= rows['Departments'] || [];
+  const cfgD = rows['Config']      || [];
+
+  if (vD.length)   DATA.voters     = vD.map(r=>({pin:r[0]||'',name:r[1]||'',dept:r[2]||'',unit:r[3]||'',hasVoted:(r[4]||'').toUpperCase()==='TRUE'}));
+  if (nD.length)   DATA.nominees   = nD.map(r=>({id:r[0]||'',name:r[1]||'',dept:r[2]||'',unit:r[3]||'',category:r[4]||'',scope:r[5]||'global'}));
+  if (vtD.length)  DATA.votes      = vtD.map(r=>({pin:r[0]||'',nomineeId:r[1]||'',category:r[2]||'',timestamp:r[3]||''}));
+  if (adD.length)  DATA.admins     = adD.map(r=>({pin:r[0]||'',role:r[1]||'',name:r[2]||''}));
+  if (catD.length) DATA.categories = catD.map(r=>({id:r[0]||'',name:r[1]||'',scope:r[2]||'global'}));
+
+  // Config tab — rows of [key, value] — optional, missing tab is fine
+  if (cfgD.length) {
+    cfgD.forEach(r=>{
       const key=(r[0]||'').trim().toLowerCase();
       const val=(r[1]||'').trim();
-      if (key==='votingopen')  CFG.votingOpen = (val.toUpperCase()!=='FALSE');
-      if (key==='orgname' && val) CFG.orgName = val;
-      if (key==='scripturl' && val) CFG.scriptUrl = val;
+      if (key==='votingopen')           CFG.votingOpen = (val.toUpperCase()!=='FALSE');
+      if (key==='orgname'   && val)     CFG.orgName   = val;
+      if (key==='scripturl' && val)     CFG.scriptUrl = val;
     });
   }
 
-  // Parse departments (DeptID, DeptName, DeptColor, UnitName — multiple rows per dept)
-  if (deptD.values) {
+  // Departments — multiple rows per dept (DeptID, DeptName, DeptColor, UnitName)
+  if (deptD.length) {
     const dMap={};
-    deptD.values.forEach(r=>{
+    deptD.forEach(r=>{
       const [did,dname,dcolor,uname]=r;
       if (!did) return;
       if (!dMap[did]) dMap[did]={id:did,name:dname||did,color:dcolor||COLORS[Object.keys(dMap).length%COLORS.length],units:[]};
@@ -616,6 +682,15 @@ async function fetchFromSheets() {
     });
     DATA.departments = Object.values(dMap);
   }
+
+  console.log('[Sheets] Sync complete —',
+    DATA.voters.length,'voters,',
+    DATA.nominees.length,'nominees,',
+    DATA.admins.length,'admins,',
+    DATA.categories.length,'categories,',
+    DATA.departments.length,'departments,',
+    DATA.votes.length,'votes'
+  );
   return true;
 }
 
@@ -671,11 +746,12 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   setLD('Connecting to Google Sheets…');
   try {
     await fetchFromSheets();
-    setLD('✓ Data loaded');
-    await new Promise(r=>setTimeout(r,500));
+    setLD('✓ Data loaded successfully');
+    await new Promise(r=>setTimeout(r,600));
   } catch(e) {
-    setLD('⚠ Could not reach Sheets — check credentials');
-    await new Promise(r=>setTimeout(r,1500));
+    console.error('[Boot] Sync failed:', e);
+    setLD('⚠ ' + (e.message || 'Could not reach Google Sheets'));
+    await new Promise(r=>setTimeout(r,2000));
   }
   hideLoader();
   showScreen('screen-login');
