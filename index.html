@@ -161,12 +161,17 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .db-track{flex:1;height:26px;background:var(--bg3);border-radius:6px;overflow:hidden;}
 .db-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:500;transition:width .8s ease;}
 .db-pct{font-size:11px;color:var(--text3);min-width:32px;}
-.tbl-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
-.rtbl{width:100%;border-collapse:collapse;}
-.rtbl th{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);padding:11px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--bg3);}
-.rtbl td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--border);}
+.tbl-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.rtbl{width:100%;border-collapse:collapse;min-width:480px;}
+.rtbl th{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);background:var(--bg3);white-space:nowrap;}
+.rtbl td{padding:10px 12px;font-size:12px;border-bottom:1px solid var(--border);}
 .rtbl tr:last-child td{border-bottom:none;}
 .rtbl tr:hover td{background:rgba(255,255,255,.015);}
+/* Hide dept column on very small screens — info is in unit */
+@media(max-width:500px){
+  .rtbl .col-dept{display:none;}
+  .rtbl td,.rtbl th{padding:8px 8px;}
+}
 .rnk{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
 .r1{background:var(--gold-dim);color:var(--gold2);border:1px solid rgba(201,168,76,.3);}
 .r2{background:rgba(180,180,200,.1);color:#a0a0b8;border:1px solid rgba(160,160,180,.2);}
@@ -424,6 +429,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
       <div class="stats-row" id="admin-stats"></div>
       <div class="sect-title">Participation by department</div>
       <div id="admin-dept-bars"></div>
+      <div class="sect-title" style="margin-top:20px;">Participation by unit</div>
+      <div id="admin-unit-bars"></div>
     </div>
 
     <!-- Results -->
@@ -433,17 +440,50 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
         <select class="fsel" id="a-fdept" onchange="adminDeptChanged()"><option value="">All departments</option></select>
         <select class="fsel" id="a-funit" onchange="renderResults('admin')"><option value="">All units</option></select>
       </div>
-      <div class="tbl-wrap"><table class="rtbl"><thead><tr><th>Rank</th><th>Nominee</th><th>Emp ID</th><th>Department</th><th>Unit</th><th>Category</th><th>Votes</th></tr></thead><tbody id="admin-res-body"></tbody></table></div>
+      <div class="tbl-wrap"><table class="rtbl"><thead><tr><th>Rank</th><th>Nominee</th><th>Emp ID</th><th class="col-dept">Department</th><th>Unit</th><th>Category</th><th>Votes</th></tr></thead><tbody id="admin-res-body"></tbody></table></div>
     </div>
 
     <!-- By Department -->
-    <div class="tab-panel" id="admin-departments"><div id="admin-dept-detail"></div></div>
+    <div class="tab-panel" id="admin-departments">
+      <div class="rf" style="margin-bottom:14px;">
+        <select class="fsel" id="bd-dept-filter" onchange="renderDeptDetail('admin-dept-detail')">
+          <option value="">All departments</option>
+        </select>
+      </div>
+      <div id="admin-dept-detail"></div>
+    </div>
 
     <!-- By Unit -->
-    <div class="tab-panel" id="admin-units"><div id="admin-unit-detail"></div></div>
+    <div class="tab-panel" id="admin-units">
+      <div class="rf" style="margin-bottom:14px;">
+        <select class="fsel" id="bu-dept-filter" onchange="buDeptChanged()">
+          <option value="">All departments</option>
+        </select>
+        <select class="fsel" id="bu-unit-filter" onchange="renderUnitDetail('admin-unit-detail')">
+          <option value="">All units</option>
+        </select>
+      </div>
+      <div id="admin-unit-detail"></div>
+    </div>
 
     <!-- By Category -->
-    <div class="tab-panel" id="admin-categories"><div id="admin-cat-detail"></div></div>
+    <div class="tab-panel" id="admin-categories">
+      <div class="rf" style="margin-bottom:14px;">
+        <select class="fsel" id="bc-scope-filter" onchange="renderCategoryDetail('admin-cat-detail')">
+          <option value="">All scopes</option>
+          <option value="global">🌐 Company-wide</option>
+          <option value="dept">🏢 Department</option>
+          <option value="unit">📍 Unit</option>
+        </select>
+        <select class="fsel" id="bc-dept-filter" onchange="bcDeptChanged()">
+          <option value="">All departments</option>
+        </select>
+        <select class="fsel" id="bc-unit-filter" onchange="renderCategoryDetail('admin-cat-detail')">
+          <option value="">All units</option>
+        </select>
+      </div>
+      <div id="admin-cat-detail"></div>
+    </div>
   </div>
 </div>
 
@@ -468,6 +508,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
       <div class="stats-row" id="sa-stats"></div>
       <div class="sect-title">Participation by department</div>
       <div id="sa-dept-bars"></div>
+      <div class="sect-title" style="margin-top:20px;">Participation by unit</div>
+      <div id="sa-unit-bars"></div>
     </div>
 
     <div class="tab-panel" id="superadmin-results">
@@ -1480,6 +1522,7 @@ function getRanked(catF,deptF){
 function initAdmin(){
   renderStats('admin');
   renderDeptBars('admin-dept-bars');
+  renderUnitBars('admin-unit-bars');
   fillResultFilters('a');
   renderResults('admin');
   renderDeptDetail('admin-dept-detail');
@@ -1505,10 +1548,49 @@ function renderDeptBars(containerId){
     const voted=DATA.voters.filter(v=>v.dept===dept.id&&v.hasVoted).length;
     const pct=total?Math.round(voted/total*100):0;
     const c=dept.color||COLORS[i%COLORS.length];
-    return `<div class="db-row">
-      <div class="db-name">${dept.name}</div>
-      <div class="db-track"><div class="db-fill" style="width:${pct}%;background:${c}33;color:${c};">${voted}/${total}</div></div>
-      <div class="db-pct">${pct}%</div></div>`;
+    // Show units inside each dept (collapsed by default)
+    const unitRows=dept.units.map(u=>{
+      const ut=DATA.voters.filter(v=>v.unit===u.id).length;
+      const uv=DATA.voters.filter(v=>v.unit===u.id&&v.hasVoted).length;
+      const up=ut?Math.round(uv/ut*100):0;
+      return `<div class="db-row" style="padding-left:24px;margin-top:4px;">
+        <div class="db-name" style="font-size:11px;color:var(--text3);">↳ ${u.name}</div>
+        <div class="db-track" style="height:20px;">
+          <div class="db-fill" style="width:${up}%;background:${c}22;color:${c};font-size:10px;">${uv}/${ut}</div>
+        </div>
+        <div class="db-pct" style="font-size:11px;color:var(--text3);">${up}%</div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:12px;">
+      <div class="db-row">
+        <div class="db-name" style="font-weight:500;">${dept.name}</div>
+        <div class="db-track"><div class="db-fill" style="width:${pct}%;background:${c}33;color:${c};">${voted}/${total}</div></div>
+        <div class="db-pct">${pct}%</div>
+      </div>
+      ${unitRows}
+    </div>`;
+  }).join('');
+}
+
+// Unit-only bars (flat list across all depts)
+function renderUnitBars(containerId){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  const allUnits=DATA.departments.flatMap((dept,di)=>dept.units.map(u=>({...u,deptName:dept.name,color:dept.color||COLORS[di%COLORS.length]})));
+  if(!allUnits.length){el.innerHTML='<div class="empty-state">No units configured yet.</div>';return;}
+  const maxVoters=Math.max(...allUnits.map(u=>DATA.voters.filter(v=>v.unit===u.id).length),1);
+  el.innerHTML=allUnits.map(u=>{
+    const total=DATA.voters.filter(v=>v.unit===u.id).length;
+    const voted=DATA.voters.filter(v=>v.unit===u.id&&v.hasVoted).length;
+    const pct=total?Math.round(voted/total*100):0;
+    return `<div class="db-row" style="margin-bottom:6px;">
+      <div class="db-name" style="font-size:11px;max-width:110px;">
+        <div style="font-weight:500;color:var(--text);">${u.name}</div>
+        <div style="color:var(--text3);font-size:10px;">${u.deptName}</div>
+      </div>
+      <div class="db-track"><div class="db-fill" style="width:${pct}%;background:${u.color}33;color:${u.color};">${voted}/${total}</div></div>
+      <div class="db-pct">${pct}%</div>
+    </div>`;
   }).join('');
 }
 
@@ -1556,9 +1638,9 @@ function renderResults(who){
       <td>${rnk}</td>
       <td style="font-weight:500;">${nom.name}</td>
       ${adminCols}
-      <td style="color:var(--text2);">${getDeptName(nom.dept)}</td>
+      <td class="col-dept" style="color:var(--text2);">${getDeptName(nom.dept)}</td>
       <td style="color:var(--text3);">${getUnitName(nom.unit)}</td>
-      <td><span style="font-size:11px;padding:2px 7px;border-radius:20px;background:var(--bg3);color:var(--text2);">${catName}</span></td>
+      <td style="max-width:120px;"><span style="font-size:11px;padding:2px 6px;border-radius:20px;background:var(--bg3);color:var(--text2);display:inline-block;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${catName}">${catName}</span></td>
       <td><div class="vbar-wrap"><div class="vbar" style="width:${bw}px;max-width:90px;"></div><span class="vcnt">${nom.votes}</span></div></td>
     </tr>`;
   }).join('');
@@ -1584,7 +1666,12 @@ function renderDeptDetail(containerId){
   const el=document.getElementById(containerId);
   if(!el) return;
   if(!DATA.departments.length){el.innerHTML='<div class="empty-state">No departments configured.</div>';return;}
-  el.innerHTML=DATA.departments.map((dept,di)=>{
+  // Populate dept filter
+  const deptFEl=document.getElementById('bd-dept-filter');
+  if(deptFEl&&deptFEl.options.length<=1) deptFEl.innerHTML=`<option value="">All departments</option>`+DATA.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  const deptFilter=deptFEl?.value||'';
+  const depts=deptFilter?DATA.departments.filter(d=>d.id===deptFilter):DATA.departments;
+  el.innerHTML=depts.map((dept,di)=>{
     const c=dept.color||COLORS[di%COLORS.length];
     const noms=DATA.nominees.filter(n=>n.dept===dept.id)
       .map(n=>({...n,votes:getVotes(n.id,n.name)})).sort((a,b)=>b.votes-a.votes);
@@ -1619,14 +1706,33 @@ function renderDeptDetail(containerId){
   }).join('');
 }
 
+function buDeptChanged(){
+  const deptId=document.getElementById('bu-dept-filter')?.value||'';
+  const dept=DATA.departments.find(d=>d.id===deptId);
+  const unitEl=document.getElementById('bu-unit-filter');
+  if(unitEl){
+    let units=[];
+    if(dept) units=dept.units;
+    else DATA.departments.forEach(d=>units.push(...d.units));
+    unitEl.innerHTML=`<option value="">All units</option>`+units.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+  }
+  renderUnitDetail('admin-unit-detail');
+}
 function renderUnitDetail(containerId){
   const el=document.getElementById(containerId);
   if(!el) return;
   if(!DATA.departments.length){el.innerHTML='<div class="empty-state">No departments configured.</div>';return;}
-  el.innerHTML=DATA.departments.map((dept,di)=>{
+  // Populate filters
+  const deptFEl=document.getElementById('bu-dept-filter');
+  if(deptFEl&&deptFEl.options.length<=1) deptFEl.innerHTML=`<option value="">All departments</option>`+DATA.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  const deptFilter=deptFEl?.value||'';
+  const unitFilter=document.getElementById('bu-unit-filter')?.value||'';
+  const depts=deptFilter?DATA.departments.filter(d=>d.id===deptFilter):DATA.departments;
+  el.innerHTML=depts.map((dept,di)=>{
     const dc=dept.color||COLORS[di%COLORS.length];
-    if(!dept.units.length) return '';
-    const unitBlocks=dept.units.map(unit=>{
+    const filteredUnits=unitFilter?dept.units.filter(u=>u.id===unitFilter):dept.units;
+    if(!filteredUnits.length) return '';
+    const unitBlocks=filteredUnits.map(unit=>{
       const noms=DATA.nominees.filter(n=>n.unit===unit.id)
         .map(n=>({...n,votes:getVotes(n.id,n.name)})).sort((a,b)=>b.votes-a.votes);
       const totalVoters=DATA.voters.filter(v=>v.unit===unit.id).length;
@@ -1666,12 +1772,43 @@ function renderUnitDetail(containerId){
   }).join('');
 }
 
+function bcDeptChanged(){
+  const deptId=document.getElementById('bc-dept-filter')?.value||'';
+  const dept=DATA.departments.find(d=>d.id===deptId);
+  const unitEl=document.getElementById('bc-unit-filter');
+  if(unitEl){
+    let units=[];
+    if(dept) units=dept.units;
+    else DATA.departments.forEach(d=>units.push(...d.units));
+    unitEl.innerHTML=`<option value="">All units</option>`+units.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+  }
+  renderCategoryDetail('admin-cat-detail');
+}
 function renderCategoryDetail(containerId){
   const el=document.getElementById(containerId);
   if(!el) return;
   if(!DATA.categories.length){el.innerHTML='<div class="empty-state">No categories configured.</div>';return;}
+  // Populate filters
+  const deptFEl=document.getElementById('bc-dept-filter');
+  if(deptFEl&&deptFEl.options.length<=1) deptFEl.innerHTML=`<option value="">All departments</option>`+DATA.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  const scopeFilter=document.getElementById('bc-scope-filter')?.value||'';
+  const deptFilter=deptFEl?.value||'';
+  const unitFilter=document.getElementById('bc-unit-filter')?.value||'';
   const scopeTag={global:'Company Wide',dept:'Department Wise',unit:'Unit Wise',deptcat:'Department Wise'};
-  el.innerHTML=DATA.categories.map((cat,ci)=>{
+  let cats=DATA.categories.filter(cat=>{
+    if(scopeFilter && cat.scope!==scopeFilter) return false;
+    if(deptFilter){
+      if(cat.scope==='dept' && cat.linkedDept!==deptFilter) return false;
+      if(cat.scope==='unit'){
+        const dept=DATA.departments.find(d=>d.id===deptFilter);
+        if(dept && !dept.units.find(u=>u.id===cat.linkedUnit)) return false;
+      }
+    }
+    if(unitFilter && cat.scope==='unit' && cat.linkedUnit!==unitFilter) return false;
+    return true;
+  });
+  if(!cats.length){el.innerHTML='<div class="empty-state">No categories match the selected filters.</div>';return;}
+  el.innerHTML=cats.map((cat,ci)=>{
     const c=COLORS[ci%COLORS.length];
     const noms=DATA.nominees.filter(n=>n.category===cat.id)
       .map(n=>({...n,votes:getVotes(n.id,n.name)})).sort((a,b)=>b.votes-a.votes);
@@ -1714,6 +1851,7 @@ function renderCategoryDetail(containerId){
 function initSA(){
   renderStats('sa');
   renderDeptBars('sa-dept-bars');
+  renderUnitBars('sa-unit-bars');
   fillResultFilters('sa');
   renderResults('sa');
   renderVoterList();
@@ -2786,8 +2924,8 @@ function switchTab(scope,tab,btn){
   if(btn)btn.classList.add('on');
   document.querySelectorAll(`#screen-${scope} .tab-panel`).forEach(p=>p.classList.remove('on'));
   document.getElementById(`${scope}-${tab}`)?.classList.add('on');
-  if(tab==='overview'&&scope==='admin'){renderStats('admin');renderDeptBars('admin-dept-bars');}
-  if(tab==='overview'&&scope==='superadmin'){renderStats('sa');renderDeptBars('sa-dept-bars');}
+  if(tab==='overview'&&scope==='admin'){renderStats('admin');renderDeptBars('admin-dept-bars');renderUnitBars('admin-unit-bars');}
+  if(tab==='overview'&&scope==='superadmin'){renderStats('sa');renderDeptBars('sa-dept-bars');renderUnitBars('sa-unit-bars');}
   if(tab==='results'&&scope==='admin') renderResults('admin');
   if(tab==='results'&&scope==='superadmin') renderResults('sa');
   if(tab==='departments') renderDeptDetail('admin-dept-detail');
