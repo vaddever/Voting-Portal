@@ -16,6 +16,45 @@
   --blue:#5b8ef0;--blue-dim:rgba(91,142,240,0.1);
   --r:12px;--rs:8px;
 }
+
+/* ── LIGHT MODE — follows device system setting ── */
+@media(prefers-color-scheme:light){
+  :root{
+    --bg:#f5f4f0;--bg2:#ffffff;--bg3:#f0eff9;--bg4:#e8e7f0;
+    --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
+    --text:#1a1a20;--text2:#5c5b70;--text3:#a0a0b0;
+    --gold:#9a6e1e;--gold2:#7a5310;--gold-dim:rgba(154,110,30,0.1);
+    --green:#2a7a52;--green-dim:rgba(42,122,82,0.1);
+    --red:#c03030;--red-dim:rgba(192,48,48,0.08);
+    --blue:#2a5ec0;--blue-dim:rgba(42,94,192,0.08);
+  }
+  /* Loader bg */
+  #loader{background:#f5f4f0;}
+  /* Login glows */
+  .login-glow-c1,.login-glow-c2,.g1,.g2,.setup-glow-c1,.setup-glow-c2{opacity:.4;}
+  /* Topbar */
+  .topbar{background:var(--bg);border-color:var(--border);}
+  /* Table hover */
+  .rtbl tr:hover td{background:rgba(0,0,0,.02);}
+  /* Vote footer gradient */
+  .vote-footer{background:linear-gradient(to top,var(--bg) 55%,transparent);}
+  /* Pin dots */
+  .pin-dot{background:#d0cfdc;}
+  .pin-dot.on{background:var(--gold);}
+  /* Status bars */
+  .status-open{background:rgba(42,122,82,.08);color:var(--green);}
+  .status-closed{background:rgba(192,48,48,.07);color:var(--red);}
+  /* Loader dots */
+  .ld-dot{background:var(--gold);}
+  /* Vstat cards */
+  .vstat-card{box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  /* Modal */
+  .vmodal-sheet,.modal-box{background:#ffffff;border-color:var(--border2);}
+  /* Sync badge */
+  .sync-badge{background:#ffffff;}
+  /* Toast */
+  .toast{background:#ffffff;}
+}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
 .screen{display:none;min-height:100vh;}
