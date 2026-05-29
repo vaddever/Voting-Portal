@@ -1549,26 +1549,10 @@ function renderDeptBars(containerId){
     const voted=DATA.voters.filter(v=>v.dept===dept.id&&v.hasVoted).length;
     const pct=total?Math.round(voted/total*100):0;
     const c=dept.color||COLORS[i%COLORS.length];
-    // Show units inside each dept (collapsed by default)
-    const unitRows=dept.units.map(u=>{
-      const ut=DATA.voters.filter(v=>v.unit===u.id).length;
-      const uv=DATA.voters.filter(v=>v.unit===u.id&&v.hasVoted).length;
-      const up=ut?Math.round(uv/ut*100):0;
-      return `<div class="db-row" style="padding-left:24px;margin-top:4px;">
-        <div class="db-name" style="font-size:11px;color:var(--text3);">↳ ${u.name}</div>
-        <div class="db-track" style="height:20px;">
-          <div class="db-fill" style="width:${up}%;background:${c}22;color:${c};font-size:10px;">${uv}/${ut}</div>
-        </div>
-        <div class="db-pct" style="font-size:11px;color:var(--text3);">${up}%</div>
-      </div>`;
-    }).join('');
-    return `<div style="margin-bottom:12px;">
-      <div class="db-row">
-        <div class="db-name" style="font-weight:500;">${dept.name}</div>
-        <div class="db-track"><div class="db-fill" style="width:${pct}%;background:${c}33;color:${c};">${voted}/${total}</div></div>
-        <div class="db-pct">${pct}%</div>
-      </div>
-      ${unitRows}
+    return `<div class="db-row" style="margin-bottom:6px;">
+      <div class="db-name" style="font-weight:500;">${dept.name}</div>
+      <div class="db-track"><div class="db-fill" style="width:${pct}%;background:${c}33;color:${c};">${voted}/${total}</div></div>
+      <div class="db-pct">${pct}%</div>
     </div>`;
   }).join('');
 }
