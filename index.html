@@ -124,6 +124,38 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .nom-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
 .nom-name{font-size:13px;font-weight:500;flex:1;}
 .nom-info{font-size:11px;color:var(--text2);margin-left:auto;white-space:nowrap;}
+/* VOTER STATS DASHBOARD */
+.vstats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px;}
+.vstat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px 12px;text-align:center;cursor:pointer;transition:all .2s;user-select:none;}
+.vstat-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.3);}
+.vstat-card:active{transform:translateY(0);}
+.vstat-voted{border-color:rgba(76,175,125,.2);}
+.vstat-voted .vstat-val{color:var(--green);}
+.vstat-voted:hover{border-color:var(--green);}
+.vstat-pending{border-color:rgba(201,168,76,.2);}
+.vstat-pending .vstat-val{color:var(--gold2);}
+.vstat-pending:hover{border-color:var(--gold);}
+.vstat-icon{font-size:18px;margin-bottom:6px;}
+.vstat-val{font-family:'DM Serif Display',serif;font-size:28px;letter-spacing:-.02em;line-height:1;}
+.vstat-lbl{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-top:4px;}
+/* VOTER MODAL */
+.vmodal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s;}
+.vmodal-sheet{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r) var(--r) 0 0;width:100%;max-width:480px;max-height:75vh;display:flex;flex-direction:column;animation:slideUp .3s ease;}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.vmodal-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.vmodal-title{font-size:15px;font-weight:500;}
+.vmodal-close{background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;padding:4px;line-height:1;}
+.vmodal-body{overflow-y:auto;flex:1;}
+.vmodal-staff-row{display:flex;align-items:center;gap:10px;padding:11px 18px;border-bottom:1px solid var(--border);}
+.vmodal-staff-row:last-child{border-bottom:none;}
+.vmodal-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.vmodal-name{font-size:13px;font-weight:500;}
+.vmodal-meta{font-size:11px;color:var(--text2);margin-top:2px;}
+.vmodal-empid{font-size:10px;font-family:monospace;color:var(--gold);font-weight:600;margin-top:2px;}
+.vmodal-badge{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;margin-left:auto;flex-shrink:0;}
+.vmodal-badge-voted{background:var(--green-dim);color:var(--green);border:1px solid rgba(76,175,125,.2);}
+.vmodal-badge-pending{background:var(--gold-dim);color:var(--gold2);border:1px solid rgba(201,168,76,.2);}
+.vmodal-empty{text-align:center;padding:32px;color:var(--text3);font-size:13px;}
 .vote-footer{position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 55%,transparent);padding:16px 24px;}
 .vf-inner{max-width:920px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .vprog{font-size:13px;color:var(--text2);}
@@ -392,6 +424,25 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
       <p id="v-sub">Select one nominee per category</p>
       <div class="v-meta" id="v-meta"></div>
     </div>
+    <!-- Voter stats dashboard -->
+    <div class="vstats-row" id="vstats-row" style="display:none;">
+      <div class="vstat-card" onclick="showVoterModal('total')">
+        <div class="vstat-icon">👥</div>
+        <div class="vstat-val" id="vs-total">—</div>
+        <div class="vstat-lbl">Total Voters</div>
+      </div>
+      <div class="vstat-card vstat-voted" onclick="showVoterModal('voted')">
+        <div class="vstat-icon">✅</div>
+        <div class="vstat-val" id="vs-voted">—</div>
+        <div class="vstat-lbl">Voted</div>
+      </div>
+      <div class="vstat-card vstat-pending" onclick="showVoterModal('pending')">
+        <div class="vstat-icon">⏳</div>
+        <div class="vstat-val" id="vs-pending">—</div>
+        <div class="vstat-lbl">Pending</div>
+      </div>
+    </div>
+
     <div id="cats-container"></div>
   </div>
   <div class="vote-footer">
@@ -1259,6 +1310,8 @@ function initVoter(){
   document.getElementById('v-meta').innerHTML=`
     <span class="meta-chip">🏢 ${deptName}</span>
     <span class="meta-chip">📍 ${unitName}</span>`;
+  // Populate stats dashboard
+  renderVoterStats();
   const bar=document.getElementById('voter-status-bar');
   bar.className=`status-bar ${CFG.votingOpen?'status-open':'status-closed'}`;
   bar.textContent=CFG.votingOpen?'✓ Voting is open':'✗ Voting is closed';
@@ -1323,6 +1376,72 @@ function initVoter(){
     container.innerHTML=`<div class="empty-state"><div class="empty-state-icon">📋</div>No nominees available for your department/unit yet. Please contact the administrator.</div>`;
   }
   updateVProg();
+}
+
+function renderVoterStats(){
+  const total  = DATA.voters.length;
+  const voted  = DATA.voters.filter(v=>v.hasVoted).length;
+  const pending = total - voted;
+  const row = document.getElementById('vstats-row');
+  if(!row) return;
+  // Show only if we have voter data
+  if(!total){ row.style.display='none'; return; }
+  row.style.display='grid';
+  document.getElementById('vs-total').textContent   = total;
+  document.getElementById('vs-voted').textContent   = voted;
+  document.getElementById('vs-pending').textContent = pending;
+}
+
+function showVoterModal(type){
+  let title='', voters=[];
+  if(type==='total'){
+    title=`All Voters (${DATA.voters.length})`;
+    voters=[...DATA.voters];
+  } else if(type==='voted'){
+    voters=DATA.voters.filter(v=>v.hasVoted);
+    title=`Voted (${voters.length})`;
+  } else {
+    voters=DATA.voters.filter(v=>!v.hasVoted);
+    title=`Pending (${voters.length})`;
+  }
+  // Sort alphabetically
+  voters.sort((a,b)=>a.name.localeCompare(b.name));
+
+  const rows = voters.length ? voters.map(v=>{
+    const color = stringToColor(v.name);
+    const initials = v.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const deptName = getDeptName(v.dept);
+    const unitName = getUnitName(v.unit);
+    const badgeClass = v.hasVoted ? 'vmodal-badge-voted' : 'vmodal-badge-pending';
+    const badgeText  = v.hasVoted ? '✓ Voted' : '⏳ Pending';
+    return `<div class="vmodal-staff-row">
+      <div class="vmodal-avatar" style="background:${color}22;color:${color};">${initials}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="vmodal-name">${v.name}</div>
+        ${v.empId?`<div class="vmodal-empid">${v.empId}</div>`:''}
+        <div class="vmodal-meta">${deptName} · ${unitName}</div>
+      </div>
+      <span class="vmodal-badge ${badgeClass}">${badgeText}</span>
+    </div>`;
+  }).join('') : `<div class="vmodal-empty">No staff in this group</div>`;
+
+  // Build modal
+  const ov = document.createElement('div');
+  ov.className = 'vmodal-overlay';
+  ov.id = 'vmodal-ov';
+  ov.innerHTML = `<div class="vmodal-sheet">
+    <div class="vmodal-hdr">
+      <span class="vmodal-title">${title}</span>
+      <button class="vmodal-close" onclick="closeVoterModal()">✕</button>
+    </div>
+    <div class="vmodal-body">${rows}</div>
+  </div>`;
+  ov.onclick = e => { if(e.target===ov) closeVoterModal(); };
+  document.body.appendChild(ov);
+}
+
+function closeVoterModal(){
+  document.getElementById('vmodal-ov')?.remove();
 }
 
 function selectNom(catId,nomId){
