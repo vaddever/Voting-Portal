@@ -1085,7 +1085,7 @@ function initVoter(){
     else noms=DATA.nominees.filter(n=>n.category===cat.id);
     if(!noms.length) return;
     idx++;
-    const hasMany = noms.length > 5;
+    const hasMany = noms.length > 3;
     const sec=document.createElement('div');
     sec.className='cat-section';
     sec.innerHTML=`<div class="cat-hdr">
