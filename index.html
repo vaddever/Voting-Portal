@@ -255,11 +255,32 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .nom-search-inp:focus{border-color:var(--gold);}
 .nom-search-inp::placeholder{color:var(--text3);}
 .nom-search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none;}
-.noms-collapsed .nom-card:nth-child(n+6){display:none !important;}
+.noms-collapsed .nom-card:nth-child(n+4){display:none !important;}
 .show-more-btn{width:100%;margin-top:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rs);padding:8px;font-size:12px;color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
 .show-more-btn:hover{border-color:var(--gold);color:var(--gold);}
 .nom-no-results{font-size:12px;color:var(--text3);padding:12px 0;text-align:center;}
 
+/* NOMINEE MANAGEMENT LIST */
+.nom-cat-group{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;}
+.nom-cat-group-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);}
+.nom-cat-group-title{font-size:13px;font-weight:500;flex:1;}
+.nom-cat-group-count{font-size:11px;color:var(--text3);}
+.nom-list-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);transition:background .15s;}
+.nom-list-row:last-child{border-bottom:none;}
+.nom-list-row:hover{background:rgba(255,255,255,.015);}
+.nom-list-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.nom-list-info{flex:1;}
+.nom-list-name{font-size:13px;font-weight:500;}
+.nom-list-meta{font-size:11px;color:var(--text2);margin-top:1px;}
+.nom-list-votes{font-size:12px;color:var(--text3);min-width:28px;text-align:right;}
+/* STAFF LIST */
+.staff-list-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.staff-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;}
+.staff-row:last-child{border-bottom:none;}
+.staff-row:hover{background:rgba(255,255,255,.015);}
+.staff-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.staff-name{flex:1;font-weight:500;font-size:13px;}
+.staff-dept{font-size:11px;color:var(--text2);}
 /* TOAST */
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;padding:10px 18px;border-radius:var(--r);opacity:0;transition:all .3s;z-index:1000;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -422,6 +443,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
       <button class="tab-btn on" onclick="switchTab('superadmin','overview',this)">Overview</button>
       <button class="tab-btn" onclick="switchTab('superadmin','results',this)">Results</button>
       <button class="tab-btn" onclick="switchTab('superadmin','voters',this)">Voters</button>
+      <button class="tab-btn" onclick="switchTab('superadmin','staff',this)">Staff</button>
       <button class="tab-btn" onclick="switchTab('superadmin','nominees',this)">Nominees</button>
       <button class="tab-btn" onclick="switchTab('superadmin','categories',this)">Categories</button>
       <button class="tab-btn" onclick="switchTab('superadmin','settings',this)">Settings</button>
@@ -459,9 +481,22 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
       </div>
       <div class="rf">
         <select class="fsel" id="nom-fcat" onchange="renderNominees()"><option value="">All categories</option></select>
-        <select class="fsel" id="nom-fdept" onchange="renderNominees()"><option value="">All departments</option></select>
+        <select class="fsel" id="nom-fdept" onchange="nomDeptChanged()"><option value="">All departments</option></select>
+        <select class="fsel" id="nom-funit" onchange="renderNominees()"><option value="">All units</option></select>
       </div>
-      <div class="nom-mgr-grid" id="nom-mgr-grid"></div>
+      <div id="nom-mgr-list"></div>
+    </div>
+
+    <div class="tab-panel" id="superadmin-staff">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:14px;font-weight:500;">Staff Directory</div>
+        <button class="btn-sm green" onclick="openAddStaffModal()">+ Add staff</button>
+      </div>
+      <div class="rf">
+        <select class="fsel" id="staff-fdept" onchange="staffDeptChanged()"><option value="">All departments</option></select>
+        <select class="fsel" id="staff-funit" onchange="renderStaff()"><option value="">All units</option></select>
+      </div>
+      <div id="staff-list-container"></div>
     </div>
 
     <div class="tab-panel" id="superadmin-categories">
@@ -571,7 +606,8 @@ const CFG = {
 // ═══════════════════════════════════════════════════════════
 // DATA — loaded entirely from Google Sheets
 // ═══════════════════════════════════════════════════════════
-const DATA = { voters:[], admins:[], nominees:[], votes:[], categories:[], departments:[] };
+const DATA = { voters:[], admins:[], nominees:[], votes:[], categories:[], departments:[], staff:[] };
+// staff = [{id, name, dept, unit}]
 // departments = [{id,name,color,units:[{id,name}]}]
 // categories  = [{id,name,scope}]  scope: 'dept'|'unit'|'global'
 // nominees    = [{id,name,dept,unit,category}]
@@ -621,7 +657,8 @@ async function fetchFromSheets() {
     'Admins!A2:C',
     'Categories!A2:C',
     'Departments!A2:D',
-    'Config!A1:B20'
+    'Config!A1:B20',
+    'Staff!A2:D'
   ];
 
   // Use batchGet but handle partial failures by fetching individually if batch fails
@@ -809,6 +846,38 @@ async function fetchFromSheets() {
       if(byName) n.category=byName.id;
     }
   });
+
+  // ── STAFF: ID | Name | Dept | Unit ──
+  // Flexible: accepts ID|Name|Dept|Unit or Name|DeptName|UnitName
+  const stfD = rows['Staff'] || [];
+  if (stfD.length) {
+    DATA.staff = stfD.map(r=>{
+      const c0=(r[0]||'').trim(), c1=(r[1]||'').trim(), c2=(r[2]||'').trim(), c3=(r[3]||'').trim();
+      // Portal format: stf_xxx | Name | DeptID | UnitID
+      if(c0.startsWith('stf_')){
+        return {id:c0, name:c1, dept:c2, unit:c3};
+      }
+      // Human format: Name | DeptName | UnitName (no ID)
+      const did = 'dept_'+toId(c1||'');
+      const uid = did+'_'+toId(c2||'');
+      return {id:'stf_'+toId(c0), name:c0, dept:did, unit:uid};
+    }).filter(s=>s.name);
+    // Resolve dept/unit names to IDs
+    DATA.staff.forEach(s=>{
+      if(!DATA.departments.find(d=>d.id===s.dept)){
+        const byName=DATA.departments.find(d=>d.name.toLowerCase()===s.dept.toLowerCase());
+        if(byName) s.dept=byName.id;
+      }
+      let foundUnit=false;
+      for(const d of DATA.departments){ if(d.units.find(u=>u.id===s.unit)){foundUnit=true;break;} }
+      if(!foundUnit){
+        for(const d of DATA.departments){
+          const byName=d.units.find(u=>u.name.toLowerCase()===s.unit.toLowerCase());
+          if(byName){ s.unit=byName.id; break; }
+        }
+      }
+    });
+  }
 
   console.log('[Sheets] Sync complete —',
     DATA.voters.length,'voters,',
@@ -1085,7 +1154,7 @@ function initVoter(){
     else noms=DATA.nominees.filter(n=>n.category===cat.id);
     if(!noms.length) return;
     idx++;
-    const hasMany = noms.length > 5;
+    const hasMany = noms.length > 3;
     const sec=document.createElement('div');
     sec.className='cat-section';
     sec.innerHTML=`<div class="cat-hdr">
@@ -1152,7 +1221,7 @@ function filterNomSearch(catId){
   // If search cleared, restore collapsed state if needed
   if(!q){
     const total=grid.querySelectorAll('.nom-card').length;
-    if(total>3){
+    if(total>5){
       grid.classList.add('noms-collapsed');
       if(showBtn) showBtn.style.display='flex';
     }
@@ -1334,6 +1403,7 @@ function initSA(){
   renderVoterList();
   renderNominees();
   renderCatList();
+  if(DATA.staff.length) renderStaff();
   renderDeptUnitManager();
   document.getElementById('sa-voting-val').textContent=CFG.votingOpen?'Open':'Closed';
   document.getElementById('sa-dept-count').textContent=DATA.departments.length;
@@ -1396,35 +1466,88 @@ async function resetAllVotes(){
 }
 
 // ── NOMINEES ──
-function populateNomFilters(){
+function populateNomFilters(resetUnits){
   const catEl=document.getElementById('nom-fcat');
   const deptEl=document.getElementById('nom-fdept');
-  if(catEl){ catEl.innerHTML=`<option value="">All categories</option>`+DATA.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');}
-  if(deptEl){ deptEl.innerHTML=`<option value="">All departments</option>`+DATA.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');}
+  if(catEl) catEl.innerHTML=`<option value="">All categories</option>`+DATA.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(deptEl) deptEl.innerHTML=`<option value="">All departments</option>`+DATA.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  populateNomUnitFilter();
+}
+function populateNomUnitFilter(){
+  const deptF=document.getElementById('nom-fdept')?.value||'';
+  const unitEl=document.getElementById('nom-funit');
+  if(!unitEl) return;
+  let units=[];
+  if(deptF){
+    const dept=DATA.departments.find(d=>d.id===deptF);
+    units=dept?dept.units:[];
+  } else {
+    DATA.departments.forEach(d=>units.push(...d.units));
+  }
+  unitEl.innerHTML=`<option value="">All units</option>`+units.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+}
+function nomDeptChanged(){
+  populateNomUnitFilter();
+  renderNominees();
 }
 function renderNominees(){
   const catEl=document.getElementById('nom-fcat');
   const deptEl=document.getElementById('nom-fdept');
-  // Only rebuild filter options if empty (first load) so selections are preserved
+  const unitEl=document.getElementById('nom-funit');
   if(catEl && catEl.options.length<=1) populateNomFilters();
   const catF=catEl?.value||'';
   const deptF=deptEl?.value||'';
-  const filtered=DATA.nominees.filter(n=>(!catF||n.category===catF)&&(!deptF||n.dept===deptF));
-  const grid=document.getElementById('nom-mgr-grid');
-  if(!filtered.length){grid.innerHTML='<div class="empty-state"><div class="empty-state-icon">🏅</div>No nominees yet. Add nominees or sync from Sheets.</div>';return;}
-  grid.innerHTML=filtered.map(nom=>{
-    const votes=getVotes(nom.id, nom.name);
-    const catName=getCat(nom.category).name;
-    return `<div class="nom-mgr-card">
-      <div class="nm-info">
-        <div class="nm-name">${nom.name}</div>
-        <div class="nm-meta">${getDeptName(nom.dept)} · ${getUnitName(nom.unit)}</div>
-        <div class="nm-meta" style="margin-top:3px;">${catName}</div>
-        <div class="nm-votes">${votes} vote${votes!==1?'s':''}</div>
+  const unitF=unitEl?.value||'';
+  const filtered=DATA.nominees.filter(n=>
+    (!catF||n.category===catF)&&
+    (!deptF||n.dept===deptF)&&
+    (!unitF||n.unit===unitF)
+  );
+  const container=document.getElementById('nom-mgr-list');
+  if(!container) return;
+  if(!filtered.length){
+    container.innerHTML='<div class="empty-state"><div class="empty-state-icon">🏅</div>No nominees found. Add nominees or adjust filters.</div>';
+    return;
+  }
+  // Group by category
+  const grouped={};
+  filtered.forEach(n=>{
+    const key=n.category||'__none__';
+    if(!grouped[key]) grouped[key]=[];
+    grouped[key].push(n);
+  });
+  // Sort categories in configured order
+  const catOrder=DATA.categories.map(c=>c.id);
+  const sortedKeys=Object.keys(grouped).sort((a,b)=>catOrder.indexOf(a)-catOrder.indexOf(b));
+  container.innerHTML=sortedKeys.map(catId=>{
+    const cat=getCat(catId);
+    const noms=grouped[catId];
+    const rows=noms.map(nom=>{
+      const votes=getVotes(nom.id,nom.name);
+      return `<div class="nom-list-row">
+        <div class="nom-list-avatar" style="background:${stringToColor(nom.name)}22;color:${stringToColor(nom.name)};">${nom.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
+        <div class="nom-list-info">
+          <div class="nom-list-name">${nom.name}</div>
+          <div class="nom-list-meta">${getDeptName(nom.dept)} · ${getUnitName(nom.unit)}</div>
+        </div>
+        <div class="nom-list-votes">${votes}v</div>
+        <button class="btn-sm red" onclick="removeNom('${nom.id}')" style="padding:4px 9px;">✕</button>
+      </div>`;
+    }).join('');
+    return `<div class="nom-cat-group">
+      <div class="nom-cat-group-hdr">
+        <span class="nom-cat-group-title">${cat.name}</span>
+        <span class="nom-cat-group-count">${noms.length} nominee${noms.length!==1?'s':''}</span>
+        <button class="btn-sm green" onclick="openAddNomModal('${catId}')" style="padding:4px 10px;font-size:10px;">+ Add</button>
       </div>
-      <button class="btn-sm red" onclick="removeNom('${nom.id}')">✕</button>
+      ${rows}
     </div>`;
   }).join('');
+}
+function stringToColor(str){
+  let h=0; for(let i=0;i<str.length;i++) h=str.charCodeAt(i)+((h<<5)-h);
+  const c=['#c9a84c','#5b8ef0','#4caf7d','#e05555','#9b74db','#5bbef0','#e08a55'];
+  return c[Math.abs(h)%c.length];
 }
 async function removeNom(id){
   const nom=DATA.nominees.find(n=>n.id===id);
@@ -1436,6 +1559,97 @@ async function removeNom(id){
   showToast(`${nom.name} removed`,'ok');
 }
 
+// ── STAFF ──
+function renderStaff(){
+  const deptF=document.getElementById('staff-fdept')?.value||'';
+  const unitF=document.getElementById('staff-funit')?.value||'';
+  const deptEl=document.getElementById('staff-fdept');
+  const unitEl=document.getElementById('staff-funit');
+  if(deptEl&&deptEl.options.length<=1){
+    deptEl.innerHTML=`<option value="">All departments</option>`+DATA.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  }
+  populateStaffUnitFilter();
+  const filtered=DATA.staff.filter(s=>(!deptF||s.dept===deptF)&&(!unitF||s.unit===unitF));
+  const el=document.getElementById('staff-list-container');
+  if(!el) return;
+  if(!filtered.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">👤</div>No staff yet. Add staff members or add them directly in the Staff tab of your Google Sheet.</div>';return;}
+  el.innerHTML=`<div class="staff-list-wrap">`+filtered.map(s=>`
+    <div class="staff-row">
+      <div class="staff-avatar" style="background:${stringToColor(s.name)}22;color:${stringToColor(s.name)};">${s.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
+      <span class="staff-name">${s.name}</span>
+      <span class="staff-dept">${getDeptName(s.dept)} · ${getUnitName(s.unit)}</span>
+      <button class="btn-sm green" onclick="nomStaffFor('${s.id}')" style="margin-left:auto;">+ Nominate</button>
+      <button class="btn-sm red" onclick="removeStaff('${s.id}')">✕</button>
+    </div>`).join('')+`</div>`;
+}
+function populateStaffUnitFilter(){
+  const deptF=document.getElementById('staff-fdept')?.value||'';
+  const unitEl=document.getElementById('staff-funit');
+  if(!unitEl) return;
+  let units=[];
+  if(deptF){ const d=DATA.departments.find(d=>d.id===deptF); units=d?d.units:[]; }
+  else DATA.departments.forEach(d=>units.push(...d.units));
+  const cur=unitEl.value;
+  unitEl.innerHTML=`<option value="">All units</option>`+units.map(u=>`<option value="${u.id}" ${u.id===cur?'selected':''}>${u.name}</option>`).join('');
+}
+function staffDeptChanged(){ populateStaffUnitFilter(); renderStaff(); }
+function nomStaffFor(staffId){
+  const s=DATA.staff.find(x=>x.id===staffId);
+  if(!s) return;
+  // Switch to nominees tab and open modal pre-filled with this staff member
+  const btn=document.querySelector('#screen-superadmin .tab-btn:nth-child(5)');
+  switchTab('superadmin','nominees',btn);
+  setTimeout(()=>{
+    openAddNomModal('');
+    setTimeout(()=>{
+      document.getElementById('mn-name').value=s.name;
+      const deptSel=document.getElementById('mn-dept');
+      if(deptSel){ for(let i=0;i<deptSel.options.length;i++){ if(deptSel.options[i].value===s.dept){deptSel.selectedIndex=i;break;} } fillNomUnits(); }
+      setTimeout(()=>{
+        const unitSel=document.getElementById('mn-unit');
+        if(unitSel){ for(let i=0;i<unitSel.options.length;i++){ if(unitSel.options[i].value===s.unit){unitSel.selectedIndex=i;break;} } }
+      },60);
+    },100);
+  },100);
+}
+function openAddStaffModal(){
+  const dOpts=DATA.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  openModal(`<div class="modal-title">Add Staff Member</div>
+    <div class="modal-field"><label class="modal-lbl">Full Name</label><input class="modal-inp" id="ms-name" placeholder="Staff full name"></div>
+    <div class="modal-field"><label class="modal-lbl">Department</label><select class="modal-sel" id="ms-dept" onchange="fillStaffUnits()">${dOpts}</select></div>
+    <div class="modal-field"><label class="modal-lbl">Unit</label><select class="modal-sel" id="ms-unit"></select></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" onclick="addStaff()">Add Staff</button>
+    </div>`);
+  fillStaffUnits();
+}
+function fillStaffUnits(){
+  const deptId=document.getElementById('ms-dept')?.value;
+  const dept=DATA.departments.find(d=>d.id===deptId);
+  const sel=document.getElementById('ms-unit');
+  if(sel&&dept) sel.innerHTML=dept.units.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+}
+async function addStaff(){
+  const name=document.getElementById('ms-name').value.trim();
+  const dept=document.getElementById('ms-dept').value;
+  const unit=document.getElementById('ms-unit').value;
+  if(!name){showToast('Name required','err');return;}
+  if(DATA.staff.find(s=>s.name.toLowerCase()===name.toLowerCase())){showToast(`${name} already in staff list`,'err');return;}
+  const s={id:'stf_'+toId(name),name,dept,unit};
+  DATA.staff.push(s);
+  closeModal();renderStaff();
+  await writeToSheets('addStaff',{staff:s});
+  showToast(`${name} added to staff`,'ok');
+}
+async function removeStaff(id){
+  const s=DATA.staff.find(x=>x.id===id);
+  if(!s||!confirm(`Remove ${s.name} from staff list?`)) return;
+  DATA.staff=DATA.staff.filter(x=>x.id!==id);
+  renderStaff();
+  await writeToSheets('removeStaff',{id});
+  showToast(`${s.name} removed`,'ok');
+}
 // ── CATEGORIES ──
 function renderCatList(){
   const el=document.getElementById('cat-list-container');
@@ -1636,19 +1850,73 @@ async function addVoter(){
   showToast(`${name} added`,'ok');
 }
 
-function openAddNomModal(){
-  const cOpts=DATA.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+function openAddNomModal(preCatId){
+  const cOpts=DATA.categories.map(c=>`<option value="${c.id}" ${c.id===preCatId?'selected':''}>${c.name}</option>`).join('');
   const dOpts=DATA.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  // Staff picker options
+  const hasStaff = DATA.staff.length > 0;
+  const staffOpts = hasStaff
+    ? DATA.staff.map(s=>`<option value="${s.id}" data-dept="${s.dept}" data-unit="${s.unit}">${s.name} (${getDeptName(s.dept)} · ${getUnitName(s.unit)})</option>`).join('')
+    : '';
   openModal(`<div class="modal-title">Add Nominee</div>
-    <div class="modal-field"><label class="modal-lbl">Full Name</label><input class="modal-inp" id="mn-name" placeholder="Nominee full name"></div>
+    ${hasStaff ? `
+    <div class="modal-field">
+      <label class="modal-lbl">Select from Staff</label>
+      <select class="modal-sel" id="mn-staff" onchange="fillNomFromStaff()">
+        <option value="">— type manually below —</option>
+        ${staffOpts}
+      </select>
+    </div>` : ''}
+    <div class="modal-field"><label class="modal-lbl">Full Name</label><input class="modal-inp" id="mn-name" placeholder="Or type nominee name manually"></div>
     <div class="modal-field"><label class="modal-lbl">Category</label><select class="modal-sel" id="mn-cat">${cOpts||'<option value="">— add categories first —</option>'}</select></div>
     <div class="modal-field"><label class="modal-lbl">Department</label><select class="modal-sel" id="mn-dept" onchange="fillNomUnits()">${dOpts||'<option value="">— no departments yet —</option>'}</select></div>
     <div class="modal-field"><label class="modal-lbl">Unit</label><select class="modal-sel" id="mn-unit"></select></div>
+    <div id="mn-duplicate-warn" style="font-size:12px;color:var(--red);margin-top:4px;display:none;"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-confirm" onclick="addNom()">Add Nominee</button>
     </div>`);
   fillNomUnits();
+}
+function fillNomFromStaff(){
+  const sel=document.getElementById('mn-staff');
+  const opt=sel?.options[sel.selectedIndex];
+  if(!opt||!opt.value) return;
+  const staff=DATA.staff.find(s=>s.id===opt.value);
+  if(!staff) return;
+  document.getElementById('mn-name').value=staff.name;
+  // Set dept
+  const deptSel=document.getElementById('mn-dept');
+  if(deptSel){
+    for(let i=0;i<deptSel.options.length;i++){
+      if(deptSel.options[i].value===staff.dept){deptSel.selectedIndex=i;break;}
+    }
+    fillNomUnits();
+    // Set unit after units are populated
+    setTimeout(()=>{
+      const unitSel=document.getElementById('mn-unit');
+      if(unitSel){
+        for(let i=0;i<unitSel.options.length;i++){
+          if(unitSel.options[i].value===staff.unit){unitSel.selectedIndex=i;break;}
+        }
+      }
+    },50);
+  }
+  checkNomDuplicate();
+}
+function checkNomDuplicate(){
+  const name=(document.getElementById('mn-name')?.value||'').trim().toLowerCase();
+  const catId=document.getElementById('mn-cat')?.value||'';
+  const warn=document.getElementById('mn-duplicate-warn');
+  if(!warn||!name||!catId) return;
+  const cat=getCat(catId);
+  const dupe=DATA.nominees.find(n=>n.name.toLowerCase()===name&&n.category===catId);
+  if(dupe){
+    warn.textContent=`⚠ ${dupe.name} is already nominated for "${cat.name}"`;
+    warn.style.display='block';
+  } else {
+    warn.style.display='none';
+  }
 }
 function fillNomUnits(){
   const deptId=document.getElementById('mn-dept')?.value;
@@ -1662,8 +1930,16 @@ async function addNom(){
   const dept=document.getElementById('mn-dept').value;
   const unit=document.getElementById('mn-unit').value;
   if(!name||!catId){showToast('Name and category required','err');return;}
+  // Duplicate check — same person, same category
+  const dupe=DATA.nominees.find(n=>n.name.toLowerCase()===name.toLowerCase()&&n.category===catId);
+  if(dupe){
+    const cat=getCat(catId);
+    showToast(`${name} is already nominated for "${cat.name}"`, 'err');
+    return;
+  }
   const cat=DATA.categories.find(c=>c.id===catId);
-  const nom={id:`nom_${Date.now()}`,name,dept,unit,category:catId,scope:cat?.scope||'global'};
+  const nomId='nom_'+toId(name)+'_'+toId(dept)+'_'+catId;
+  const nom={id:nomId, name, dept, unit, category:catId, scope:cat?.scope||'global'};
   DATA.nominees.push(nom);
   closeModal();renderNominees();
   await writeToSheets('addNominee',{nominee:nom});
@@ -1869,6 +2145,7 @@ function switchTab(scope,tab,btn){
   if(tab==='departments') renderDeptDetail('admin-dept-detail');
   if(tab==='voters') renderVoterList();
   if(tab==='nominees'){ populateNomFilters(); renderNominees(); }
+  if(tab==='staff') renderStaff();
   if(tab==='categories') renderCatList();
   if(tab==='settings') initSA();
 }
