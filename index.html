@@ -1085,7 +1085,7 @@ function initVoter(){
     else noms=DATA.nominees.filter(n=>n.category===cat.id);
     if(!noms.length) return;
     idx++;
-    const hasMany = noms.length > 3;
+    const hasMany = noms.length > 5;
     const sec=document.createElement('div');
     sec.className='cat-section';
     sec.innerHTML=`<div class="cat-hdr">
@@ -1152,7 +1152,7 @@ function filterNomSearch(catId){
   // If search cleared, restore collapsed state if needed
   if(!q){
     const total=grid.querySelectorAll('.nom-card').length;
-    if(total>5){
+    if(total>3){
       grid.classList.add('noms-collapsed');
       if(showBtn) showBtn.style.display='flex';
     }
