@@ -253,6 +253,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 /* EMPTY STATE */
 .empty-state{text-align:center;padding:40px;color:var(--text3);font-size:13px;}
 .empty-state-icon{font-size:32px;margin-bottom:10px;}
+/* ADMIN RESULTS SECTION HEADERS */
+.ar-section-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1.5px solid var(--border2);}
+.ar-section-title{font-size:15px;font-weight:500;color:var(--text);}
 
 /* VOTER NOMINEE SEARCH + EXPAND */
 .nom-search-wrap{position:relative;margin-bottom:10px;}
@@ -419,9 +422,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
     <div class="dash-tabs">
       <button class="tab-btn on" onclick="switchTab('admin','overview',this)">Overview</button>
       <button class="tab-btn" onclick="switchTab('admin','results',this)">Results</button>
-      <button class="tab-btn" onclick="switchTab('admin','departments',this)">By Department</button>
-      <button class="tab-btn" onclick="switchTab('admin','units',this)">By Unit</button>
-      <button class="tab-btn" onclick="switchTab('admin','categories',this)">By Category</button>
     </div>
 
     <!-- Overview -->
@@ -433,62 +433,31 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
       <div id="admin-unit-bars"></div>
     </div>
 
-    <!-- Results -->
+    <!-- Results — single unified page -->
     <div class="tab-panel" id="admin-results">
-      <div class="rf">
-        <select class="fsel" id="a-fcat" onchange="renderResults('admin')"><option value="">All categories</option></select>
-        <select class="fsel" id="a-fdept" onchange="adminDeptChanged()"><option value="">All departments</option></select>
-        <select class="fsel" id="a-funit" onchange="renderResults('admin')"><option value="">All units</option></select>
+      <!-- Global filter bar -->
+      <div class="rf" style="margin-bottom:20px;">
+        <select class="fsel" id="ar-fdept" onchange="arDeptChanged()"><option value="">All departments</option></select>
+        <select class="fsel" id="ar-funit" onchange="renderAdminResults()"><option value="">All units</option></select>
       </div>
-      <div class="tbl-wrap"><table class="rtbl"><thead><tr>
-  <th style="width:36px;">Rank</th>
-  <th>Nominee</th>
-  <th class="col-dept">Dept · Unit</th>
-  <th style="width:90px;">Category</th>
-  <th style="width:60px;text-align:right;">Votes</th>
-</tr></thead><tbody id="admin-res-body"></tbody></table></div>
-    </div>
 
-    <!-- By Department -->
-    <div class="tab-panel" id="admin-departments">
-      <div class="rf" style="margin-bottom:14px;">
-        <select class="fsel" id="bd-dept-filter" onchange="renderDeptDetail('admin-dept-detail')">
-          <option value="">All departments</option>
-        </select>
+      <!-- Section 1: By Award Category -->
+      <div class="ar-section-hdr" id="ar-cat-hdr">
+        <span class="ar-section-title">🏆 By Award Category</span>
       </div>
-      <div id="admin-dept-detail"></div>
-    </div>
+      <div id="ar-by-category"></div>
 
-    <!-- By Unit -->
-    <div class="tab-panel" id="admin-units">
-      <div class="rf" style="margin-bottom:14px;">
-        <select class="fsel" id="bu-dept-filter" onchange="buDeptChanged()">
-          <option value="">All departments</option>
-        </select>
-        <select class="fsel" id="bu-unit-filter" onchange="renderUnitDetail('admin-unit-detail')">
-          <option value="">All units</option>
-        </select>
+      <!-- Section 2: By Department -->
+      <div class="ar-section-hdr" style="margin-top:24px;" id="ar-dept-hdr">
+        <span class="ar-section-title">🏢 By Department</span>
       </div>
-      <div id="admin-unit-detail"></div>
-    </div>
+      <div id="ar-by-department"></div>
 
-    <!-- By Category -->
-    <div class="tab-panel" id="admin-categories">
-      <div class="rf" style="margin-bottom:14px;">
-        <select class="fsel" id="bc-scope-filter" onchange="renderCategoryDetail('admin-cat-detail')">
-          <option value="">All scopes</option>
-          <option value="global">🌐 Company-wide</option>
-          <option value="dept">🏢 Department</option>
-          <option value="unit">📍 Unit</option>
-        </select>
-        <select class="fsel" id="bc-dept-filter" onchange="bcDeptChanged()">
-          <option value="">All departments</option>
-        </select>
-        <select class="fsel" id="bc-unit-filter" onchange="renderCategoryDetail('admin-cat-detail')">
-          <option value="">All units</option>
-        </select>
+      <!-- Section 3: By Unit -->
+      <div class="ar-section-hdr" style="margin-top:24px;" id="ar-unit-hdr">
+        <span class="ar-section-title">📍 By Unit</span>
       </div>
-      <div id="admin-cat-detail"></div>
+      <div id="ar-by-unit"></div>
     </div>
   </div>
 </div>
@@ -1530,9 +1499,6 @@ function initAdmin(){
   renderStats('admin');
   renderDeptBars('admin-dept-bars');
   renderUnitBars('admin-unit-bars');
-  fillResultFilters('a');
-  renderResults('admin');
-  renderDeptDetail('admin-dept-detail');
   applyOrgName();
 }
 
@@ -1612,6 +1578,147 @@ function adminDeptChanged(){
     unitEl.innerHTML=`<option value="">All units</option>`+units.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
   }
   renderResults('admin');
+}
+
+// ── Shared nominee row builder (dept-page card style) ──
+function buildNomRow(nom, accentColor, showUnit){
+  const empId = getStaffId(nom.name);
+  const catName = getCat(nom.category).name;
+  const maxV = nom._maxV || nom.votes || 1;
+  const barPct = Math.round(nom.votes / maxV * 100);
+  const isWinner = nom._rank === 0 && nom.votes > 0;
+  const initials = nom.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const locationLine = showUnit
+    ? `${getDeptName(nom.dept)} · ${getUnitName(nom.unit)}`
+    : getDeptName(nom.dept);
+  return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);${isWinner?'background:rgba(201,168,76,0.05);':''}">
+    <!-- Rank -->
+    <div style="width:22px;text-align:center;flex-shrink:0;">
+      ${isWinner?'<span style="font-size:13px;">🏆</span>':`<span style="font-size:11px;font-weight:600;color:var(--text3);">${nom._rank+1}</span>`}
+    </div>
+    <!-- Avatar -->
+    <div style="width:34px;height:34px;border-radius:50%;background:${accentColor}22;color:${accentColor};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${initials}</div>
+    <!-- Name + EmpID + location -->
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:13px;font-weight:500;line-height:1.3;">${nom.name}</div>
+      ${empId?`<div style="font-size:10px;font-family:monospace;color:var(--gold);font-weight:600;margin-top:1px;">${empId}</div>`:''}
+      <div style="font-size:11px;color:var(--text3);margin-top:1px;">${locationLine}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:1px;">${catName}</div>
+    </div>
+    <!-- Bar + votes -->
+    <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
+      <div style="width:50px;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;">
+        <div style="width:${barPct}%;height:100%;background:${isWinner?'var(--gold)':accentColor};border-radius:2px;min-width:${nom.votes>0?3:0}px;"></div>
+      </div>
+      <span style="font-size:14px;font-weight:600;color:${isWinner?'var(--gold2)':'var(--text2)'};min-width:24px;text-align:right;">${nom.votes}</span>
+    </div>
+  </div>`;
+}
+
+// ── Dept/unit filter helpers for unified results ──
+function arDeptChanged(){
+  const deptF = document.getElementById('ar-fdept')?.value||'';
+  const unitEl = document.getElementById('ar-funit');
+  if(unitEl){
+    let units = [];
+    if(deptF){ const d = DATA.departments.find(d=>d.id===deptF); units = d?d.units:[]; }
+    else DATA.departments.forEach(d=>units.push(...d.units));
+    unitEl.innerHTML = `<option value="">All units</option>`+units.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+  }
+  renderAdminResults();
+}
+
+function renderAdminResults(){
+  // Populate dept filter
+  const deptEl = document.getElementById('ar-fdept');
+  if(deptEl && deptEl.options.length<=1)
+    deptEl.innerHTML = `<option value="">All departments</option>`+DATA.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+
+  const deptF = document.getElementById('ar-fdept')?.value||'';
+  const unitF = document.getElementById('ar-funit')?.value||'';
+
+  const filterNoms = (noms) => noms
+    .filter(n=>(!deptF||n.dept===deptF)&&(!unitF||n.unit===unitF))
+    .map(n=>({...n, votes:getVotes(n.id,n.name)}))
+    .sort((a,b)=>b.votes-a.votes)
+    .map((n,i,arr)=>({...n, _rank:i, _maxV:arr[0]?.votes||1}));
+
+  // ─── SECTION 1: By Award Category ───────────────────────
+  const catEl = document.getElementById('ar-by-category');
+  if(catEl){
+    const scopeTag={global:'Company Wide',dept:'Department Wise',unit:'Unit Wise',deptcat:'Department Wise'};
+    catEl.innerHTML = DATA.categories.map((cat,ci)=>{
+      const c = COLORS[ci%COLORS.length];
+      const noms = filterNoms(DATA.nominees.filter(n=>n.category===cat.id));
+      if(!noms.length) return '';
+      const totalVotes = noms.reduce((s,n)=>s+n.votes,0);
+      const scopeTxt = scopeTag[cat.scope]||'';
+      const linkedTxt = (cat.scope==='dept'&&cat.linkedDept)?' — '+getDeptName(cat.linkedDept):(cat.scope==='unit'&&cat.linkedUnit)?' — '+getUnitName(cat.linkedUnit):'';
+      return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;">
+        <div style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+          <div style="width:9px;height:9px;border-radius:50%;background:${c};flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:500;">${cat.name}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">${scopeTxt}${linkedTxt} · ${noms.length} nominee${noms.length!==1?'s':''} · ${totalVotes} vote${totalVotes!==1?'s':''} cast</div>
+          </div>
+        </div>
+        ${noms.map(n=>buildNomRow(n,c,true)).join('')}
+      </div>`;
+    }).filter(Boolean).join('') || '<div class="empty-state">No results yet.</div>';
+  }
+
+  // ─── SECTION 2: By Department ────────────────────────────
+  const deptEl2 = document.getElementById('ar-by-department');
+  if(deptEl2){
+    const depts = deptF ? DATA.departments.filter(d=>d.id===deptF) : DATA.departments;
+    deptEl2.innerHTML = depts.map((dept,di)=>{
+      const c = dept.color||COLORS[di%COLORS.length];
+      const noms = filterNoms(DATA.nominees.filter(n=>n.dept===dept.id));
+      const totalVoters = DATA.voters.filter(v=>v.dept===dept.id).length;
+      const voted = DATA.voters.filter(v=>v.dept===dept.id&&v.hasVoted).length;
+      const pct = totalVoters?Math.round(voted/totalVoters*100):0;
+      return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;">
+        <div style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+          <div style="width:9px;height:9px;border-radius:50%;background:${c};flex-shrink:0;"></div>
+          <span style="font-size:13px;font-weight:500;flex:1;">${dept.name}</span>
+          <span style="font-size:11px;color:var(--text2);">${voted}/${totalVoters} voted (${pct}%)</span>
+        </div>
+        ${noms.length?noms.map(n=>buildNomRow(n,c,true)).join(''):`<div style="padding:14px;font-size:12px;color:var(--text3);">No nominees</div>`}
+      </div>`;
+    }).join('') || '<div class="empty-state">No departments found.</div>';
+  }
+
+  // ─── SECTION 3: By Unit ──────────────────────────────────
+  const unitEl2 = document.getElementById('ar-by-unit');
+  if(unitEl2){
+    const depts = deptF ? DATA.departments.filter(d=>d.id===deptF) : DATA.departments;
+    unitEl2.innerHTML = depts.map((dept,di)=>{
+      const dc = dept.color||COLORS[di%COLORS.length];
+      const filteredUnits = unitF ? dept.units.filter(u=>u.id===unitF) : dept.units;
+      if(!filteredUnits.length) return '';
+      const unitBlocks = filteredUnits.map(unit=>{
+        const noms = filterNoms(DATA.nominees.filter(n=>n.unit===unit.id));
+        const totalV = DATA.voters.filter(v=>v.unit===unit.id).length;
+        const voted = DATA.voters.filter(v=>v.unit===unit.id&&v.hasVoted).length;
+        const pct = totalV?Math.round(voted/totalV*100):0;
+        return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);margin-bottom:7px;overflow:hidden;">
+          <div style="padding:8px 12px;background:var(--bg4);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;font-weight:500;flex:1;">📍 ${unit.name}</span>
+            <span style="font-size:11px;color:var(--text2);">${voted}/${totalV} voted (${pct}%)</span>
+          </div>
+          ${noms.length?noms.map(n=>buildNomRow(n,dc,false)).join(''):`<div style="padding:12px;font-size:11px;color:var(--text3);">No nominees in this unit</div>`}
+        </div>`;
+      }).join('');
+      if(!unitBlocks.trim()) return '';
+      return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+          <div style="width:9px;height:9px;border-radius:50%;background:${dc};"></div>
+          <span style="font-size:13px;font-weight:500;color:${dc};">${dept.name}</span>
+        </div>
+        <div style="padding:8px;">${unitBlocks}</div>
+      </div>`;
+    }).filter(Boolean).join('') || '<div class="empty-state">No units found.</div>';
+  }
 }
 
 // ── Admin results (table view) ──
@@ -3014,7 +3121,7 @@ function switchTab(scope,tab,btn){
   document.getElementById(`${scope}-${tab}`)?.classList.add('on');
   if(tab==='overview'&&scope==='admin'){renderStats('admin');renderDeptBars('admin-dept-bars');renderUnitBars('admin-unit-bars');}
   if(tab==='overview'&&scope==='superadmin'){renderStats('sa');renderDeptBars('sa-dept-bars');renderUnitBars('sa-unit-bars');}
-  if(tab==='results'&&scope==='admin') renderResults('admin');
+  if(tab==='results'&&scope==='admin') renderAdminResults();
   if(tab==='results'&&scope==='superadmin') renderSAResults();
   if(tab==='departments') renderDeptDetail('admin-dept-detail');
   if(tab==='units') renderUnitDetail('admin-unit-detail');
