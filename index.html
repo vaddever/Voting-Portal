@@ -513,11 +513,12 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
     </div>
 
     <div class="tab-panel" id="superadmin-results">
-      <div class="rf">
-        <select class="fsel" id="sa-fcat" onchange="renderResults('sa')"><option value="">All categories</option></select>
-        <select class="fsel" id="sa-fdept" onchange="renderResults('sa')"><option value="">All departments</option></select>
+      <div class="rf" style="margin-bottom:16px;">
+        <select class="fsel" id="sa-fcat" onchange="renderSAResults()"><option value="">All categories</option></select>
+        <select class="fsel" id="sa-fdept" onchange="saDeptChanged()"><option value="">All departments</option></select>
+        <select class="fsel" id="sa-funit" onchange="renderSAResults()"><option value="">All units</option></select>
       </div>
-      <div class="tbl-wrap"><table class="rtbl"><thead><tr><th>Rank</th><th>Nominee</th><th>Department</th><th>Unit</th><th>Category</th><th>Votes</th></tr></thead><tbody id="sa-res-body"></tbody></table></div>
+      <div id="sa-results-container"></div>
     </div>
 
     <div class="tab-panel" id="superadmin-voters">
@@ -1600,6 +1601,17 @@ function fillResultFilters(prefix){
   if(catEl) catEl.innerHTML=`<option value="">All categories</option>`+DATA.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   if(deptEl) deptEl.innerHTML=`<option value="">All departments</option>`+DATA.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
 }
+function saDeptChanged(){
+  const deptF=document.getElementById('sa-fdept')?.value||'';
+  const unitEl=document.getElementById('sa-funit');
+  if(unitEl){
+    let units=[];
+    if(deptF){ const d=DATA.departments.find(d=>d.id===deptF); units=d?d.units:[]; }
+    else DATA.departments.forEach(d=>units.push(...d.units));
+    unitEl.innerHTML=`<option value="">All units</option>`+units.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+  }
+  renderSAResults();
+}
 function adminDeptChanged(){
   const deptF=document.getElementById('a-fdept')?.value||'';
   const unitEl=document.getElementById('a-funit');
@@ -1612,20 +1624,19 @@ function adminDeptChanged(){
   renderResults('admin');
 }
 
+// ── Admin results (table view) ──
 function renderResults(who){
-  const prefix=who==='admin'?'a':'sa';
-  const catF=document.getElementById(`${prefix}-fcat`)?.value||'';
-  const deptF=document.getElementById(`${prefix}-fdept`)?.value||'';
-  const unitF=document.getElementById(`${prefix}-funit`)?.value||'';
-  const tbodyId=who==='admin'?'admin-res-body':'sa-res-body';
+  const prefix='a';
+  const catF=document.getElementById('a-fcat')?.value||'';
+  const deptF=document.getElementById('a-fdept')?.value||'';
+  const unitF=document.getElementById('a-funit')?.value||'';
   const ranked=DATA.nominees
     .filter(n=>(!catF||n.category===catF)&&(!deptF||n.dept===deptF)&&(!unitF||n.unit===unitF))
     .map(n=>({...n,votes:getVotes(n.id,n.name)}))
     .sort((a,b)=>b.votes-a.votes);
   const maxV=ranked[0]?.votes||1;
-  const tbody=document.getElementById(tbodyId);
-  const colSpan=who==='admin'?'7':'6';
-  if(!ranked.length){tbody.innerHTML=`<tr><td colspan="${colSpan}" class="empty-state">No results yet — votes will appear here once cast.</td></tr>`;return;}
+  const tbody=document.getElementById('admin-res-body');
+  if(!ranked.length){tbody.innerHTML=`<tr><td colspan="7" class="empty-state">No results yet.</td></tr>`;return;}
   tbody.innerHTML=ranked.map((nom,i)=>{
     const rC=i===0?'r1':i===1?'r2':i===2?'r3':'';
     const rnk=i<3?`<span class="rnk ${rC}">${i+1}</span>`:`<span style="color:var(--text3);font-size:12px;">${i+1}</span>`;
@@ -1633,17 +1644,102 @@ function renderResults(who){
     const catName=getCat(nom.category).name;
     const empId=getStaffId(nom.name);
     const empBadge=empId?`<span style="font-size:10px;color:var(--gold);font-family:monospace;font-weight:600;padding:1px 6px;background:var(--gold-dim);border:1px solid rgba(201,168,76,.2);border-radius:4px;">${empId}</span>`:'—';
-    const adminCols=who==='admin'?`<td style="color:var(--gold);font-size:12px;font-family:monospace;">${empBadge}</td>`:'';
     return `<tr>
       <td>${rnk}</td>
       <td style="font-weight:500;">${nom.name}</td>
-      ${adminCols}
+      <td style="color:var(--gold);font-size:12px;font-family:monospace;">${empBadge}</td>
       <td class="col-dept" style="color:var(--text2);">${getDeptName(nom.dept)}</td>
       <td style="color:var(--text3);">${getUnitName(nom.unit)}</td>
       <td style="max-width:120px;"><span style="font-size:11px;padding:2px 6px;border-radius:20px;background:var(--bg3);color:var(--text2);display:inline-block;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${catName}">${catName}</span></td>
       <td><div class="vbar-wrap"><div class="vbar" style="width:${bw}px;max-width:90px;"></div><span class="vcnt">${nom.votes}</span></div></td>
     </tr>`;
   }).join('');
+}
+
+// ── SA results (category-grouped card view) ──
+function renderSAResults(){
+  const catF=document.getElementById('sa-fcat')?.value||'';
+  const deptF=document.getElementById('sa-fdept')?.value||'';
+  const unitF=document.getElementById('sa-funit')?.value||'';
+  // Populate filters
+  const catEl=document.getElementById('sa-fcat');
+  const deptEl=document.getElementById('sa-fdept');
+  if(catEl&&catEl.options.length<=1) catEl.innerHTML=`<option value="">All categories</option>`+DATA.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(deptEl&&deptEl.options.length<=1) deptEl.innerHTML=`<option value="">All departments</option>`+DATA.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  const container=document.getElementById('sa-results-container');
+  if(!container) return;
+
+  const scopeTag={global:'Company Wide',dept:'Department Wise',unit:'Unit Wise',deptcat:'Department Wise'};
+  const cats=catF?DATA.categories.filter(c=>c.id===catF):DATA.categories;
+
+  if(!cats.length||!DATA.nominees.length){
+    container.innerHTML='<div class="empty-state"><div class="empty-state-icon">📊</div>No results yet — votes will appear here once cast.</div>';
+    return;
+  }
+
+  container.innerHTML=cats.map((cat,ci)=>{
+    const c=COLORS[ci%COLORS.length];
+    let noms=DATA.nominees.filter(n=>n.category===cat.id&&(!deptF||n.dept===deptF)&&(!unitF||n.unit===unitF))
+      .map(n=>({...n,votes:getVotes(n.id,n.name)})).sort((a,b)=>b.votes-a.votes);
+    if(!noms.length) return '';
+    const totalVotes=noms.reduce((s,n)=>s+n.votes,0);
+    const maxV=noms[0]?.votes||1;
+    const scopeTxt=scopeTag[cat.scope]||'';
+    const linkedTxt=(cat.scope==='dept'&&cat.linkedDept)?' — '+getDeptName(cat.linkedDept):(cat.scope==='unit'&&cat.linkedUnit)?' — '+getUnitName(cat.linkedUnit):'';
+
+    const rows=noms.map((nom,rank)=>{
+      const empId=getStaffId(nom.name);
+      const isWinner=rank===0&&nom.votes>0;
+      const barPct=Math.round(nom.votes/maxV*100);
+      const initials=nom.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);${isWinner?'background:rgba(201,168,76,0.06);':''}">
+        <!-- Rank -->
+        <div style="width:22px;text-align:center;flex-shrink:0;">
+          ${isWinner&&nom.votes>0?'<span style="font-size:14px;">🏆</span>':`<span style="font-size:11px;font-weight:600;color:var(--text3);">${rank+1}</span>`}
+        </div>
+        <!-- Avatar -->
+        <div style="width:34px;height:34px;border-radius:50%;background:${c}22;color:${c};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${initials}</div>
+        <!-- Name + EmpID + location -->
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:500;line-height:1.3;">${nom.name}</div>
+          ${empId?`<div style="font-size:11px;font-family:monospace;color:var(--gold);font-weight:600;margin-top:1px;">${empId}</div>`:''}
+          <div style="font-size:11px;color:var(--text3);margin-top:1px;">${getDeptName(nom.dept)} · ${getUnitName(nom.unit)}</div>
+        </div>
+        <!-- Vote bar + count -->
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <div style="width:60px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;">
+            <div style="width:${barPct}%;height:100%;background:${isWinner?'var(--gold)':c};border-radius:3px;min-width:${nom.votes>0?3:0}px;"></div>
+          </div>
+          <span style="font-size:14px;font-weight:600;color:${isWinner?'var(--gold2)':'var(--text2)'};min-width:28px;text-align:right;">${nom.votes}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px;overflow:hidden;">
+      <!-- Category header -->
+      <div style="padding:12px 16px;background:var(--bg3);border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:${c};flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:500;">${cat.name}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">${scopeTxt}${linkedTxt} · ${noms.length} nominee${noms.length!==1?'s':''} · ${totalVotes} vote${totalVotes!==1?'s':''} cast</div>
+          </div>
+        </div>
+        <!-- Column labels -->
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:0 2px;">
+          <div style="width:22px;"></div>
+          <div style="width:34px;"></div>
+          <div style="flex:1;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);">Nominee</div>
+          <div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);white-space:nowrap;">Votes</div>
+        </div>
+      </div>
+      ${rows}
+    </div>`;
+  }).filter(Boolean).join('');
+
+  if(!container.innerHTML.trim()){
+    container.innerHTML='<div class="empty-state"><div class="empty-state-icon">📊</div>No results match the selected filters.</div>';
+  }
 }
 
 function nomResultCard(nom, color){
@@ -1853,7 +1949,7 @@ function initSA(){
   renderDeptBars('sa-dept-bars');
   renderUnitBars('sa-unit-bars');
   fillResultFilters('sa');
-  renderResults('sa');
+  renderSAResults();
   renderVoterList();
   renderNominees();
   renderCatList();
@@ -2927,7 +3023,7 @@ function switchTab(scope,tab,btn){
   if(tab==='overview'&&scope==='admin'){renderStats('admin');renderDeptBars('admin-dept-bars');renderUnitBars('admin-unit-bars');}
   if(tab==='overview'&&scope==='superadmin'){renderStats('sa');renderDeptBars('sa-dept-bars');renderUnitBars('sa-unit-bars');}
   if(tab==='results'&&scope==='admin') renderResults('admin');
-  if(tab==='results'&&scope==='superadmin') renderResults('sa');
+  if(tab==='results'&&scope==='superadmin') renderSAResults();
   if(tab==='departments') renderDeptDetail('admin-dept-detail');
   if(tab==='units') renderUnitDetail('admin-unit-detail');
   if(tab==='categories' && scope==='admin') renderCategoryDetail('admin-cat-detail');
