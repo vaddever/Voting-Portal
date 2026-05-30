@@ -3632,17 +3632,12 @@ function buildResponse(text) {
 // ═══════════════════════════════════════════════════════════
 function openBulkUploadModal(type){
   const templates = {
-    staff:   'EmpID,Name,Department,Unit
-EMP001,Ahmed Ali,Finance,Accounts
-EMP002,Sara Noor,HR,Recruitment',
-    voters:  'PIN,EmpID,Name,Department,Unit
-100001,EMP001,Ahmed Ali,Finance,Accounts
-100002,EMP002,Sara Noor,HR,Recruitment',
-    nominees:'Name,Department,Unit,Category,Scope
-Ahmed Ali,Finance,Accounts,Leadership Award,global
-Sara Noor,HR,Recruitment,Best Staff Award,dept',
+    staff:   'EmpID,Name,Department,Unit\nEMP001,Ahmed Ali,Finance,Accounts\nEMP002,Sara Noor,HR,Recruitment',
+    voters:  'PIN,EmpID,Name,Department,Unit\n100001,EMP001,Ahmed Ali,Finance,Accounts\n100002,EMP002,Sara Noor,HR,Recruitment',
+    nominees:'Name,Department,Unit,Category,Scope\nAhmed Ali,Finance,Accounts,Leadership Award,global\nSara Noor,HR,Recruitment,Best Staff Award,dept'
   };
   const labels = {staff:'Staff',voters:'Voters',nominees:'Nominees'};
+  const tpl = templates[type] || '';
   openModal(`<div class="modal-title">⬆ Bulk Upload — ${labels[type]}</div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.6;">
       Paste CSV data below or upload a <code>.csv</code> file.<br>
@@ -3650,19 +3645,25 @@ Sara Noor,HR,Recruitment,Best Staff Award,dept',
     </div>
     <div style="display:flex;gap:8px;margin-bottom:8px;">
       <input type="file" id="bulk-file-inp" accept=".csv,.txt" onchange="bulkLoadFile()" style="font-size:12px;color:var(--text2);flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);padding:6px 10px;">
-      <button class="btn-sm" onclick="document.getElementById('bulk-csv').value=templates_${type}()">Load template</button>
+      <button class="btn-sm" onclick="loadBulkTemplate('${type}')">Load template</button>
     </div>
-    <textarea id="bulk-csv" style="width:100%;height:180px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);padding:10px;color:var(--text);font-family:monospace;font-size:11px;outline:none;resize:vertical;" placeholder="Paste CSV here…">${templates[type]}</textarea>
+    <textarea id="bulk-csv" style="width:100%;height:180px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);padding:10px;color:var(--text);font-family:monospace;font-size:11px;outline:none;resize:vertical;" placeholder="Paste CSV here…" oninput="previewBulkCSV()">${tpl}</textarea>
     <div id="bulk-preview" style="font-size:12px;color:var(--text2);margin-top:8px;"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-confirm" onclick="processBulkUpload('${type}')">Upload</button>
     </div>`);
-  // wire template button properly
-  document.querySelector('[onclick*="templates_"]')?.setAttribute('onclick',`document.getElementById('bulk-csv').value=\`${templates[type]}\``);
-  // live preview
-  document.getElementById('bulk-csv').addEventListener('input', ()=>previewBulkCSV(type));
-  previewBulkCSV(type);
+  previewBulkCSV();
+}
+
+function loadBulkTemplate(type){
+  const templates = {
+    staff:   'EmpID,Name,Department,Unit\nEMP001,Ahmed Ali,Finance,Accounts\nEMP002,Sara Noor,HR,Recruitment',
+    voters:  'PIN,EmpID,Name,Department,Unit\n100001,EMP001,Ahmed Ali,Finance,Accounts\n100002,EMP002,Sara Noor,HR,Recruitment',
+    nominees:'Name,Department,Unit,Category,Scope\nAhmed Ali,Finance,Accounts,Leadership Award,global\nSara Noor,HR,Recruitment,Best Staff Award,dept'
+  };
+  const ta = document.getElementById('bulk-csv');
+  if(ta){ ta.value = templates[type] || ''; previewBulkCSV(); }
 }
 
 function bulkLoadFile(){
@@ -3677,9 +3678,7 @@ function bulkLoadFile(){
 }
 
 function parseCSV(text){
-  const lines = text.trim().split(/
-?
-/).filter(l=>l.trim());
+  const lines = text.trim().split(new RegExp('\\r?\\n')).filter(l=>l.trim());
   if(lines.length<2) return {headers:[], rows:[]};
   const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
   const rows = lines.slice(1).map(line=>{
